@@ -144,6 +144,7 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -151,9 +152,10 @@ class HomeScreen extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => AddExerciseScreen()),
                 );
               },
-              child: Text("Adicionar Exercício"),
+              child: Text("Adicionar Exercício",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),),
             ),
-            SizedBox(height: 10),
+            SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -161,9 +163,10 @@ class HomeScreen extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => HistoryScreen()),
                 );
               },
-              child: Text("Histórico"),
+              child: Text("Histórico",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),),
             ),
-            SizedBox(height: 10),
+            SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
@@ -171,8 +174,10 @@ class HomeScreen extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => ProfileScreen()),
                 );
               },
-              child: Text("Perfil"),
+              child: Text("Perfil",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),),
             ),
+            SizedBox(height: 20),
             ElevatedButton(
             onPressed: () {
               Navigator.push(
@@ -180,7 +185,8 @@ class HomeScreen extends StatelessWidget {
                 MaterialPageRoute(builder: (context) => WeightProgressScreen()),
               );
             },
-            child: Text("Evolução do Peso"),
+            child: Text("Evolução do Peso",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),),
           ),
           ],
         ),
