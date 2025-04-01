@@ -140,20 +140,27 @@ class HomeScreen extends StatelessWidget {
       centerTitle: true,
       toolbarHeight: 70, 
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AddExerciseScreen()),
-                );
-              },
-              child: Text("Adicionar Exercício",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),),
+      body: Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage("lib/assets/images/academia.jpg"), 
+          fit: BoxFit.cover, 
+        ),
+      ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => AddExerciseScreen()),
+                  );
+                },
+                child: Text("Adicionar Exercício",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),),
             ),
             SizedBox(height: 20),
             ElevatedButton(
@@ -191,6 +198,7 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }
