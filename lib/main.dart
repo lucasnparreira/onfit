@@ -1,9 +1,16 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as thePath;
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter/widgets.dart' show BuildContext;
 import 'package:fl_chart/fl_chart.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:cross_file/cross_file.dart';
+import 'dart:io';
 
 void main() {
   runApp(FitnessApp());
@@ -128,6 +135,10 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final buttonWidth = screenSize.width * 0.8; 
+    final buttonHeight = screenSize.height * 0.08;
+
     return Scaffold(
       appBar: AppBar(
       title: Padding(
@@ -148,57 +159,88 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
         child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildMainButton(
+                  context,
+                  "Adicionar Exercício",
+                  buttonWidth,
+                  buttonHeight,
+                  () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => AddExerciseScreen()),
-                  );
-                },
-                child: Text("Adicionar Exercício",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildMainButton(
                   context,
-                  MaterialPageRoute(builder: (context) => HistoryScreen()),
-                );
-              },
-              child: Text("Histórico",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
+                  "Histórico",
+                  buttonWidth,
+                  buttonHeight,
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => HistoryScreen()),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildMainButton(
                   context,
-                  MaterialPageRoute(builder: (context) => ProfileScreen()),
-                );
-              },
-              child: Text("Perfil",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),),
+                  "Perfil",
+                  buttonWidth,
+                  buttonHeight,
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ProfileScreen()),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildMainButton(
+                  context,
+                  "Evolução do Peso",
+                  buttonWidth,
+                  buttonHeight,
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => WeightProgressScreen()),
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => WeightProgressScreen()),
-              );
-            },
-            child: Text("Evolução do Peso",
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),),
           ),
-          ],
         ),
       ),
-    ),
+    );
+  }
+
+  Widget _buildMainButton(
+    BuildContext context,
+    String text,
+    double width,
+    double height,
+    VoidCallback onPressed,
+  ) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue.withOpacity(0.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -212,10 +254,10 @@ class AddExerciseScreen extends StatefulWidget {
 
 class _AddExerciseScreenState extends State<AddExerciseScreen> {
   final TextEditingController nameController = TextEditingController();
-  final TextEditingController weightController = TextEditingController();
-  final TextEditingController repsController = TextEditingController();
-  final TextEditingController setsController = TextEditingController();
-
+  final TextEditingController weightController = TextEditingController(text: '0');
+  final TextEditingController repsController = TextEditingController(text: '0');
+  final TextEditingController setsController = TextEditingController(text: '0');
+  
   Future<void> _saveExercise() async {
     // Get the context at the start of the async operation
     final BuildContext currentContext = context;
@@ -253,6 +295,47 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
     }
   }
 
+  void _incrementValue(TextEditingController controller) {
+    int currentValue = int.tryParse(controller.text) ?? 0;
+    setState(() {
+      controller.text = (currentValue + 1).toString();
+    });
+  }
+
+  void _decrementValue(TextEditingController controller) {
+    int currentValue = int.tryParse(controller.text) ?? 0;
+    if (currentValue > 0) {
+      setState(() {
+        controller.text = (currentValue - 1).toString();
+      });
+    }
+  }
+
+  Widget _buildNumberFieldWithButtons({
+    required String labelText,
+    required TextEditingController controller,
+  }) {
+    return Row(
+      children: [
+        IconButton(
+          icon: Icon(Icons.remove),
+          onPressed: () => _decrementValue(controller),
+        ),
+        Expanded(
+          child: TextField(
+            controller: controller,
+            decoration: InputDecoration(labelText: labelText),
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+          ),
+        ),
+        IconButton(icon: Icon(Icons.add),
+        onPressed: () => _incrementValue(controller), 
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -265,20 +348,20 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
               controller: nameController,
               decoration: const InputDecoration(labelText: "Nome do Exercício"),
             ),
-            TextField(
+            const SizedBox(height: 16),
+            _buildNumberFieldWithButtons(
               controller: weightController,
-              decoration: const InputDecoration(labelText: "Carga (kg)"),
-              keyboardType: TextInputType.number,
+              labelText: "Carga (kg)",
             ),
-            TextField(
+            const SizedBox(height: 16),
+            _buildNumberFieldWithButtons(
               controller: repsController,
-              decoration: const InputDecoration(labelText: "Repetições"),
-              keyboardType: TextInputType.number,
+              labelText: "Repetições",
             ),
-            TextField(
+            const SizedBox(height: 16),
+            _buildNumberFieldWithButtons(
               controller: setsController,
-              decoration: const InputDecoration(labelText: "Séries"),
-              keyboardType: TextInputType.number,
+             labelText: "Séries",
             ),
             const SizedBox(height: 20),
             ElevatedButton(
@@ -399,10 +482,68 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 }
 
+Future<void> _exportAllWorkouts() async {
+  try {
+    final db = await DatabaseHelper.instance.database;
+    final allExercises = await db.query('exercises', orderBy: 'date DESC');
+
+    if (allExercises.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nenhum treino encontrado para exportar')),
+      );
+      return;
+    }
+
+    StringBuffer exportContent = StringBuffer();
+    exportContent.writeln('Histórico Completo de Treinos - onFit\n');
+    exportContent.writeln('Total de treinos registrados: ${allExercises.length}\n');
+
+    String currentDate = '';
+    for (var exercise in allExercises) {
+      final exerciseDate = DateTime.parse(exercise['date'] as String);
+      final formattedDate = DateFormat('dd/MM/yyyy').format(exerciseDate);
+
+      if (formattedDate != currentDate) {
+        currentDate = formattedDate;
+        exportContent.writeln('\n=== $formattedDate ===\n');
+      }
+
+        exportContent.writeln('Exercício: ${exercise['name']}');
+        exportContent.writeln('Carga: ${exercise['weight']} kg');
+        exportContent.writeln('Repetições: ${exercise['reps']}');
+        exportContent.writeln('Séries: ${exercise['sets']}');
+        exportContent.writeln('---');
+      }
+
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/onfit_workouts${DateFormat('yyyyMMdd').format(DateTime.now())}.txt');
+      await file.writeAsString(exportContent.toString());
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Meu histórico completo de treinos do onFit',
+        subject: 'Histórico de Treinos onFit',
+      );
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao exportar: ${e.toString()}')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Histórico de Treinos")),
+      appBar: AppBar(title: Text("Histórico de Treinos"),
+      actions: [
+          IconButton(
+            icon: Icon(Icons.share),
+            onPressed: _exportAllWorkouts,
+            tooltip: 'Exportar todos os treinos',
+          ),
+        ],
+      ),      
       body: Column(
         children: [
           TableCalendar(
@@ -514,7 +655,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
              TextField(
               controller: _weightController,
-              decoration: InputDecoration(labelText: "Peso do Usuário"),
+              decoration: InputDecoration(labelText: "Peso Atual do Usuário"),
             ),
             TextField(
               controller: _goalController,
