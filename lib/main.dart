@@ -23,7 +23,10 @@ class FitnessApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        // scaffoldBackgroundColor: Colors.white.withOpacity(0.2)
+        ),
       home: HomeScreen(),
     );
   }
@@ -136,8 +139,8 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    final buttonWidth = screenSize.width * 0.8; 
-    final buttonHeight = screenSize.height * 0.08;
+    final buttonWidth = screenSize.width * 0.7; 
+    final buttonHeight = screenSize.height * 0.07;
 
     return Scaffold(
       appBar: AppBar(
@@ -571,12 +574,11 @@ Future<void> _exportAllWorkouts() async {
                           final exercise = exercises[index];
                           return ListTile(
                             title: Text(exercise['name']),
-                            subtitle: Text('Peso: ${exercise['weight']} kg, Reps: ${exercise['reps']}'),
+                            subtitle: Text('Peso: ${exercise['weight']} kg, Reps: ${exercise['reps']}, Séries: ${exercise['sets']}'),
                             trailing: Row(
                               // crossAxisAlignment: CrossAxisAlignment.end,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('Séries: ${exercise['sets']}'),
                                 IconButton(
                                   icon: Icon(Icons.edit),
                                   onPressed: () => _editExercise(exercise),
