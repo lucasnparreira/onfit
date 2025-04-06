@@ -182,20 +182,21 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
+    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
     final buttonWidth = screenSize.width * 0.7; 
     final buttonHeight = screenSize.height * 0.07;
 
     return Scaffold(
       appBar: AppBar(
       title: Padding(
-        padding: EdgeInsets.only(top: 25.0),
+        padding: EdgeInsets.only(top: screenSize.height * 0.025),
         child: Text(
           "onFit - acompanhando seus treinos",
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: screenSize.width * 0.045, fontWeight: FontWeight.bold),
         ),
       ),
       centerTitle: true,
-      toolbarHeight: 70, 
+      toolbarHeight: screenSize.height * 0.1, 
       ),
       body: Container(
       decoration: BoxDecoration(
@@ -206,47 +207,42 @@ class HomeScreen extends StatelessWidget {
       ),
         child: Center(
           child: SingleChildScrollView(
+            child:ConstrainedBox(constraints: BoxConstraints(
+              maxWidth: isPortrait ? screenSize.width * 0.9 : screenSize.width * 0.6,
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildMainButton(
+                _buildResponsiveButton(
                   context,
                   "Adicionar Exercício",
-                  buttonWidth,
-                  buttonHeight,
                   () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => AddExerciseScreen()),
                   ),
                 ),
-                const SizedBox(height: 20),
-                _buildMainButton(
+                SizedBox(height: screenSize.height * 0.02),
+                _buildResponsiveButton(
                   context,
                   "Histórico",
-                  buttonWidth,
-                  buttonHeight,
                   () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => HistoryScreen()),
                   ),
                 ),
-                const SizedBox(height: 20),
-                _buildMainButton(
+                SizedBox(height: screenSize.height * 0.02),
+                _buildResponsiveButton(
                   context,
                   "Perfil",
-                  buttonWidth,
-                  buttonHeight,
                   () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => ProfileScreen()),
                   ),
                 ),
-                const SizedBox(height: 20),
-                _buildMainButton(
+                SizedBox(height: screenSize.height * 0.02),
+                _buildResponsiveButton(
                   context,
                   "Evolução do Peso",
-                  buttonWidth,
-                  buttonHeight,
                   () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => WeightProgressScreen()),
@@ -257,6 +253,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
+     ),
     );
   }
 
@@ -384,32 +381,39 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 400;
+
     return Scaffold(
       appBar: AppBar(title: const Text("Adicionar Exercício")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(
+          horizontal: isSmallScreen ? 16.0 : 24.0,
+          vertical: 16.0,
+        ),
         child: Column(
           children: [
-            TextField(
+            _buildResponsiveTextField(
+              context,
               controller: nameController,
-              decoration: const InputDecoration(labelText: "Nome do Exercício"),
+              label: "Nome do Exercício",
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: isSmallScreen ? 12.0 : 16.0),
             _buildNumberFieldWithButtons(
               controller: weightController,
               labelText: "Carga (kg)",
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: isSmallScreen ? 12.0 : 16.0),
             _buildNumberFieldWithButtons(
               controller: repsController,
               labelText: "Repetições",
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: isSmallScreen ? 12.0 : 16.0),
             _buildNumberFieldWithButtons(
               controller: setsController,
              labelText: "Séries",
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: isSmallScreen ? 12.0 : 16.0),
             ElevatedButton(
               onPressed: _saveExercise,
               child: const Text("Salvar"),
@@ -818,6 +822,7 @@ Widget build(BuildContext context) {
             onPressed: _saveProfile,
             child: Text("Salvar"),
           ),
+          SizedBox(height: 20),
           // Add this card to display calories
           Card(
             elevation: 4,
@@ -1083,3 +1088,67 @@ class _WeightProgressScreenState extends State<WeightProgressScreen> {
     );
   }
 }
+
+  Widget _buildResponsiveButton(BuildContext context, String text, VoidCallback onPressed) {
+    final screenSize = MediaQuery.of(context).size;
+    return SizedBox(
+      width: screenSize.width * 0.7,
+      height: screenSize.height * 0.07,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue.withOpacity(0.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: screenSize.width * 0.04,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  class AppText {
+  static double getScaleFactor(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 400) return 0.8;
+    if (width < 600) return 1.0;
+    return 1.2;
+  }
+
+  static TextStyle heading1(BuildContext context) {
+    return TextStyle(
+      fontSize: 24 * getScaleFactor(context),
+      fontWeight: FontWeight.bold,
+    );
+  }
+
+  static TextStyle body(BuildContext context) {
+    return TextStyle(
+      fontSize: 16 * getScaleFactor(context),
+    );
+  }
+  
+}
+
+class AppSpacing {
+  static double small(BuildContext context) => MediaQuery.of(context).size.width * 0.02;
+  static double medium(BuildContext context) => MediaQuery.of(context).size.width * 0.04;
+  static double large(BuildContext context) => MediaQuery.of(context).size.width * 0.06;
+}
+
+ Widget _buildResponsiveTextField(BuildContext context, {required TextEditingController controller, required String label}) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(fontSize: AppText.getScaleFactor(context) * 16),
+      ),
+    );
+  }
