@@ -1152,3 +1152,40 @@ class AppSpacing {
       ),
     );
   }
+
+  class DeviceUtils {
+  static bool isSmallPhone(BuildContext context) {
+    return MediaQuery.of(context).size.width < 375;
+  }
+
+  static bool isLargeTablet(BuildContext context) {
+    return MediaQuery.of(context).size.width >= 768;
+  }
+
+  static double responsivePadding(BuildContext context) {
+    if (isSmallPhone(context)) return 8.0;
+    if (isLargeTablet(context)) return 24.0;
+    return 16.0;
+  }
+}
+
+class ResponsiveImage extends StatelessWidget {
+  final String assetPath;
+  final double maxHeight;
+
+  const ResponsiveImage({super.key, required this.assetPath, this.maxHeight = 200});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final imageHeight = constraints.maxWidth * 0.5;
+        return Image.asset(
+          assetPath,
+          height: imageHeight > maxHeight ? maxHeight : imageHeight,
+          fit: BoxFit.contain,
+        );
+      },
+    );
+  }
+}
