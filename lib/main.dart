@@ -1,5 +1,4 @@
-import 'dart:math';
-
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as thePath;
@@ -11,6 +10,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cross_file/cross_file.dart';
 import 'dart:io';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(FitnessApp());
@@ -35,24 +35,35 @@ class FitnessApp extends StatelessWidget {
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
+  
+  // Table names
+  static const String tableExercises = 'exercises';
+  static const String tableProfile = 'profile';
+  static const String tableActivityLogs = 'activity_logs';
+  
+  // Activity logs columns
+  static const String colActivityType = 'activity_type';
+  static const String colCaloriesBurned = 'calories_burned';
+  static const String colDurationSeconds = 'duration_seconds';
+  static const String colDate = 'date';
 
   DatabaseHelper._init();
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('exercises_v4.db');
+    _database = await _initDB('exercises_v9.db');
     return _database!;
   }
 
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = thePath.join(dbPath, filePath);
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(path, version: 2, onCreate: _createDB); // Version increased to 2
   }
 
   Future _createDB(Database db, int version) async {
     await db.execute(''' 
-      CREATE TABLE exercises (
+      CREATE TABLE $tableExercises (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
         weight INTEGER,
@@ -63,13 +74,45 @@ class DatabaseHelper {
     ''');
 
     await db.execute(''' 
-      CREATE TABLE profile (
+      CREATE TABLE $tableProfile (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT,
         weight INTEGER,
         goal TEXT
       )
     ''');
+
+    await db.execute(''' 
+      CREATE TABLE $tableActivityLogs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        $colActivityType TEXT,
+        $colCaloriesBurned REAL,
+        $colDurationSeconds INTEGER,
+        $colDate TEXT
+      )
+    ''');
+  }
+
+  Future<int> logActivity({
+    required String activityType,
+    required double caloriesBurned,
+    required int durationSeconds,
+  }) async {
+    final db = await database;
+    return await db.insert(tableActivityLogs, {
+      colActivityType: activityType,
+      colCaloriesBurned: caloriesBurned,
+      colDurationSeconds: durationSeconds,
+      colDate: DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getActivityHistory() async {
+    final db = await database;
+    return await db.query(
+      tableActivityLogs, // Fixed table name
+      orderBy: '$colDate DESC',
+    );
   }
 
   // Método para inserir um exercício
@@ -601,6 +644,90 @@ Future<void> _exportAllWorkouts() async {
   }
 }
 
+class CalorieTracker {
+  double _caloriesBurned = 0;
+  double _userWeight;
+  DateTime? _lastActivity;
+  bool _isActive = false;
+  DateTime? _lastUpdate;
+  String _currentActivity = 'Geral';
+  double get caloriesBurned => _caloriesBurned;
+  String get currentActivity => _currentActivity;
+  String _nextActivity = 'Geral';
+  DateTime? _startTime;
+  int _durationSeconds = 0;
+
+  // MET values for different activities
+  final Map<String, double> _metValues = {
+    'Geral': 3.5,
+    'Caminhada': 4.3,
+    'Corrida': 7.0,
+    'Ciclismo': 6.0,
+    'Musculação': 5.0,
+  };
+
+  CalorieTracker({required double initialWeight}) : _userWeight = initialWeight;
+
+  void updateWeight(double newWeight) {
+    _userWeight = newWeight;
+  }
+
+  void startActivity([String? activity]) {
+    _isActive = true;
+    _currentActivity = activity ?? _nextActivity;
+    _startTime = DateTime.now();
+    _lastUpdate = _startTime;
+  }
+
+  Future<void> endActivity() async {
+    if (_isActive && _lastUpdate != null) {
+      final endTime = DateTime.now();
+      _durationSeconds = endTime.difference(_startTime!).inSeconds;
+
+      final met = _metValues[_currentActivity] ?? 3.5;
+      _caloriesBurned += (met * _userWeight * _durationSeconds) / 3600;
+
+      await DatabaseHelper.instance.logActivity(
+        activityType: _currentActivity, 
+        caloriesBurned: _caloriesBurned, 
+        durationSeconds: _durationSeconds
+        );
+    }
+    _isActive = false;
+  }
+
+  Future<void> initialize({required double userWeight}) async {
+    _userWeight = userWeight;
+    await _requestPermissions();
+    _startTracking();
+  }
+
+  Future<bool> _requestPermissions() async {
+    if (Platform.isAndroid) {
+      return (await Permission.activityRecognition.request()).isGranted;
+    }
+    return false;
+  }
+
+  void _startTracking() {
+    // Simulate activity based on time
+    Timer.periodic(const Duration(minutes: 1), (_) {
+      if (_isActive) {
+        // Basic calculation: ~5 calories per minute for light activity
+        _caloriesBurned += (3.5 * _userWeight * 1.6667) / 1000; // MET formula simplified
+        _caloriesBurned = double.parse(_caloriesBurned.toStringAsFixed(1));
+      }
+    });
+  }
+
+  void reset() {
+    _caloriesBurned = 0;
+    _isActive = false;
+    _currentActivity = 'Geral';
+  }
+
+}
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -612,11 +739,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _goalController = TextEditingController();
+  late CalorieTracker _calorieTracker;
+  bool _isTracking = false;
+  String _selectedActivity = 'Geral';
 
   @override
   void initState() {
     super.initState();
+    _selectedActivity = 'Geral';
+     _calorieTracker = CalorieTracker(initialWeight: 70.0);
     _loadProfile();
+    _loadProfileCalories();
+  }
+
+  Future<void> _loadProfileCalories() async {
+    final profile = await DatabaseHelper.instance.getProfile();
+    if (profile != null && profile['weight'] != null) {
+      final weight = double.tryParse(profile['weight'].toString()) ?? 70.0;
+    
+    setState(() {
+        _calorieTracker.updateWeight(weight);
+        _weightController.text = weight.toString();
+      });
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -644,35 +789,214 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Perfil")),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(title: Text("Perfil")),
+    body: Padding(
+      padding: EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          TextField(
+            controller: _usernameController,
+            decoration: InputDecoration(labelText: "Nome do Usuário"),
+          ),
+          TextField(
+            controller: _weightController,
+            decoration: InputDecoration(labelText: "Peso Atual do Usuário"),
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            onChanged: (value) {
+              final weight = double.tryParse(value) ?? 70.0;
+              _calorieTracker.updateWeight(weight);
+            },
+          ),
+          TextField(
+            controller: _goalController,
+            decoration: InputDecoration(labelText: "Meta de Atividade Física"),
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _saveProfile,
+            child: Text("Salvar"),
+          ),
+          // Add this card to display calories
+          Card(
+            elevation: 4,
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Text(
+                    "Calorias Queimadas",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    "${_calorieTracker.caloriesBurned.toStringAsFixed(1)} kcal",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    _isTracking ? "Rastreando..." : "Pausado",
+                    style: TextStyle(
+                      color: _isTracking ? Colors.green : Colors.grey,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  // Add this reset button
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _calorieTracker.reset();
+                        _isTracking = false;
+                      });
+                    },
+                    icon: Icon(Icons.refresh),
+                    label: Text("Reiniciar"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 30),
+                  ElevatedButton(
+                    onPressed: _showActivityHistory,
+                    child: Text('Ver Histórico Completo'),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: Size(double.infinity, 50),
+                   ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          DropdownButton<String>(
+            value: _selectedActivity,
+            items: const [
+              DropdownMenuItem(value: 'Geral', child: Text("Atividade Geral")),
+              DropdownMenuItem(value: 'Caminhada', child: Text("Caminhada")),
+              DropdownMenuItem(value: 'Corrida', child: Text("Corrida")),
+              DropdownMenuItem(value: 'Ciclismo', child: Text("Ciclismo")),
+              DropdownMenuItem(value: 'Musculação', child: Text("Musculação")),
+            ],
+            onChanged: (String? newValue) {
+              if (newValue != null) {
+                setState(() {
+                  _selectedActivity = newValue;
+                  if (_isTracking) {
+                    // If currently tracking, update the current activity
+                    _calorieTracker.endActivity();
+                    _calorieTracker.startActivity(newValue);
+                  }
+                });
+              }
+            },
+          ),
+        ],
+      ),
+    ),
+    floatingActionButton: FloatingActionButton(
+      onPressed: () async {
+        setState(() {
+          _isTracking = !_isTracking;
+          if (_isTracking) {
+            _calorieTracker.startActivity(_selectedActivity);
+          } else {
+            _calorieTracker.endActivity().then((_) {
+              if (mounted) setState(() {});
+            });
+          }
+        });
+      },
+      child: Icon(_isTracking ? Icons.pause : Icons.play_arrow),
+      backgroundColor: _isTracking ? Colors.red : Colors.blue,
+    ),
+  );
+ }
+
+void _showActivityHistory() {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true, // Allows full screen expansion
+    builder: (context) {
+      return Container(
+        padding: EdgeInsets.all(16),
+        height: MediaQuery.of(context).size.height * 0.8, // 80% of screen height
         child: Column(
           children: [
-            TextField(
-              controller: _usernameController,
-              decoration: InputDecoration(labelText: "Nome do Usuário"),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Histórico de Atividades',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
             ),
-             TextField(
-              controller: _weightController,
-              decoration: InputDecoration(labelText: "Peso Atual do Usuário"),
-            ),
-            TextField(
-              controller: _goalController,
-              decoration: InputDecoration(labelText: "Meta de Atividade Física"),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _saveProfile,
-              child: Text("Salvar"),
+            Divider(),
+            Expanded(
+              child: _buildActivityHistoryList(),
             ),
           ],
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
+}
+}
+
+Widget _buildActivityHistoryList() {
+  return FutureBuilder<List<Map<String, dynamic>>>(
+    future: DatabaseHelper.instance.getActivityHistory(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return Center(child: CircularProgressIndicator());
+      }
+      
+      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        return Center(child: Text("Nenhuma atividade registrada ainda"));
+      }
+      
+      final logs = snapshot.data!;
+      return ListView.separated(
+        itemCount: logs.length,
+        separatorBuilder: (context, index) => Divider(),
+        itemBuilder: (context, index) {
+          final log = logs[index];
+          final duration = Duration(seconds: log['duration_seconds'] as int);
+          final date = DateTime.parse(log['date']);
+          
+          return ListTile(
+            title: Text(
+              log['activity_type'],
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${log['calories_burned'].toStringAsFixed(1)} kcal'),
+                Text('Duração: ${duration.inMinutes} minutos'),
+              ],
+            ),
+            trailing: Text(
+              DateFormat('dd/MM/yy').format(date),
+              style: TextStyle(color: Colors.grey),
+            ),
+          );
+        },
+      );
+    },
+  );
 }
 
 class WeightProgressScreen extends StatefulWidget {
@@ -745,6 +1069,7 @@ class _WeightProgressScreenState extends State<WeightProgressScreen> {
                               return FlSpot(entry.key.toDouble(), entry.value['weight'].toDouble());
                             }).toList(),
                             isCurved: true,
+                            curveSmoothness: 0.3,
                             barWidth: 3,
                             color: Color.fromRGBO(0, 122, 255, 1.0)
                           ),

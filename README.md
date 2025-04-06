@@ -85,6 +85,8 @@ lib/
 
 ⏳ Temporizador para descanso entre séries
 
+⏳ Sincronizar contador de calorias com o smartphone
+
 🌐 Sincronização na nuvem
 
 🎯 Sugestões de treinos personalizadas
