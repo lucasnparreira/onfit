@@ -59,15 +59,13 @@ Emulador Android ou dispositivo físico com depuração USB ativada
 
  flutter run
 
-<!-- 📷 Capturas de Tela
+📷 Capturas de Tela
 
-📋 Tela Inicial
-
-🏋️ Cadastro de Exercícios
-
-📅 Histórico -->
-
-
+![Alt text](lib\assets\screenshots\onfitHomeScreen.jpg)
+![Alt text](lib\assets\screenshots\onfitAdicionarExercicio.jpg)
+![Alt text](lib\assets\screenshots\onfitHistorico.jpg)
+![Alt text](lib\assets\screenshots\onfitPerfil.jpg)
+![Alt text](lib\assets\screenshots\onfitEvolucaoPeso.jpg)
 
 📖 Estrutura do Projeto
 ```json
@@ -85,7 +83,7 @@ lib/
 
 ⏳ Temporizador para descanso entre séries
 
-⏳ Sincronizar contador de calorias com o smartphone
+⏳ Sincronizar contador de calorias com o smartwatch
 
 🌐 Sincronização na nuvem
 
