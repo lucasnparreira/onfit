@@ -61,11 +61,12 @@ Emulador Android ou dispositivo físico com depuração USB ativada
 
 📷 Capturas de Tela
 
-![Alt text](lib\assets\screenshots\onfitHomeScreen.jpg)
-![Alt text](lib\assets\screenshots\onfitAdicionarExercicio.jpg)
-![Alt text](lib\assets\screenshots\onfitHistorico.jpg)
-![Alt text](lib\assets\screenshots\onfitPerfil.jpg)
-![Alt text](lib\assets\screenshots\onfitEvolucaoPeso.jpg)
+<img src="lib\assets\screenshots\onfitHomeScreen.png" alt="onfitHomeScreen" width="250" height="450"> 
+<img src="lib\assets\screenshots\onfitAdicionarExercicio.png" alt="onfitAdicionarExercicio" width="250" height="450"> 
+<img src="lib\assets\screenshots\onfitHistorico.png" alt="onfitHistorico" width="250" height="450"> 
+<img src="lib\assets\screenshots\onfitPerfil.png" alt="onfitPerfil" width="250" height="450"> 
+<img src="lib\assets\screenshots\onfitEvolucaoPeso.png" alt="onfitEvolucaoPeso" width="250" height="450"> 
+
 
 📖 Estrutura do Projeto
 ```json
